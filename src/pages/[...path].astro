@@ -1,0 +1,263 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import Base from '../layouts/Base.astro';
+import { SITE, EMAIL, LANGS, SLUGS, LOCATIONS, WAFFLES, MORE_WAFFLES, REVIEWS, T, url, type Lang, type PageKey } from '../data/site';
+
+export function getStaticPaths() {
+  const out = [];
+  for (const lang of LANGS) for (const page of Object.keys(SLUGS) as PageKey[]) {
+    const p = url(lang, page).replace(/^\/|\/$/g, '');
+    out.push({ params: { path: p || undefined }, props: { lang, page } });
+  }
+  return out;
+}
+const { lang, page } = Astro.props as { lang: Lang; page: PageKey };
+const t = (k: string) => T[k][lang];
+const files = import.meta.glob<{ default: ImageMetadata }>('../assets/photos/*.jpg', { eager: true });
+const photo = (n: string) => files[`../assets/photos/${n}.jpg`].default;
+const W = [640, 1280];
+const houses = ['bruges', 'antwerp', 'ghent'] as const;
+const isLoc = page === 'antwerp' || page === 'bruges' || page === 'ghent';
+const loc = isLoc ? LOCATIONS[page] : null;
+
+const meta: Record<string, [string, string]> = {
+  home: [t('m_home_t'), t('m_home_d')], menu: [t('m_menu_t'), t('m_menu_d')], history: [t('m_hist_t'), t('m_hist_d')],
+  jobs: [t('m_jobs_t'), t('m_jobs_d')], contact: [t('m_contact_t'), t('m_contact_d')],
+};
+const [title, description] = loc ? [loc.metaTitle[lang], loc.metaDesc[lang]] : meta[page];
+
+const restaurant = (k: (typeof houses)[number]) => ({
+  '@type': 'Restaurant',
+  name: `The House of Waffles ${LOCATIONS[k].city[lang]}`,
+  url: SITE + url(lang, k),
+  image: SITE + '/media/hero-poster.jpg',
+  email: EMAIL,
+  servesCuisine: ['Belgian', 'Waffles'],
+  address: { '@type': 'PostalAddress', streetAddress: LOCATIONS[k].street, postalCode: LOCATIONS[k].postal, addressLocality: LOCATIONS[k].locality, addressCountry: 'BE' },
+  openingHoursSpecification: [{ '@type': 'OpeningHoursSpecification', dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], opens: '11:30', closes: '19:00' }],
+});
+const jsonld = loc
+  ? { '@context': 'https://schema.org', ...restaurant(page as any) }
+  : page === 'home' || page === 'contact'
+    ? { '@context': 'https://schema.org', '@graph': [{ '@type': 'Organization', name: 'The House of Waffles', url: SITE, email: EMAIL, foundingDate: '2018' }, ...houses.map(restaurant)] }
+    : undefined;
+
+const featured = ['classico', 'banana', 'cherry', 'chuck'];
+const grid = page === 'menu' ? WAFFLES : isLoc ? WAFFLES.filter((w) => ['classico', 'banana', 'cherry'].includes(w.id)) : WAFFLES.filter((w) => featured.includes(w.id));
+const mailApply = `mailto:${EMAIL}?subject=${encodeURIComponent(t('j_subject'))}`;
+---
+<Base lang={lang} page={page} title={title} description={description} jsonld={jsonld} overlayHeader={page === 'home'}>
+
+{page === 'home' && (
+  <section class="hero">
+    <video autoplay muted loop playsinline poster="/media/hero-poster.jpg" aria-hidden="true">
+      <source src="/media/hero.mp4" type="video/mp4" />
+    </video>
+    <div class="hero-text">
+      <h1>{t('tagline')}</h1>
+      <p>{t('heroLead')}</p>
+      <p class="actions">
+        <a class="btn" href="#houses">{t('heroCta')}</a>
+        <a class="btn ghost" href={url(lang, 'menu')}>{t('heroCta2')}</a>
+      </p>
+    </div>
+  </section>
+  <section class="houses" id="houses">
+    <header class="section-head">
+      <div class="diamonds" aria-hidden="true"></div>
+      <h2>{t('housesTitle')}</h2>
+      <p>{t('housesLead')}</p>
+    </header>
+    <ol class="house-list">
+      {houses.map((k) => (
+        <li>
+          <a class="house-photo" href={url(lang, k)} tabindex="-1" aria-hidden="true">
+            <Image src={photo(LOCATIONS[k].photo)} alt="" widths={W} sizes="(min-width: 800px) 30vw, 100vw" />
+          </a>
+          <div>
+            <p class="year">{t('since')} {LOCATIONS[k].since}</p>
+            <h3><a href={url(lang, k)}>{LOCATIONS[k].city[lang]}</a></h3>
+            <p>{LOCATIONS[k].street}, {LOCATIONS[k].postal} {LOCATIONS[k].locality}<br />{t('hoursShort')}</p>
+            <p class="links"><a class="textlink" href={url(lang, k)}>{t('seeHouse')}</a><a class="textlink" href={LOCATIONS[k].maps} rel="noopener">{t('navigate')}</a></p>
+          </div>
+        </li>
+      ))}
+    </ol>
+  </section>
+)}
+
+{loc && (
+  <section class="page-hero">
+    <Image class="page-hero-img" src={photo(loc.hero)} alt="" widths={[800, 1600]} sizes="100vw" loading="eager" />
+    <div class="page-hero-text">
+      <p class="year">{t('since')} {loc.since}</p>
+      <h1>{loc.h1[lang]}</h1>
+    </div>
+  </section>
+  <section class="prose-split">
+    <div class="prose">
+      <p class="lead">{loc.intro[lang]}</p>
+      <p>{loc.body[lang]}</p>
+      {loc.side && <figure><Image src={photo(loc.side)} alt={`The House of Waffles ${loc.city[lang]}`} widths={W} sizes="(min-width: 800px) 40rem, 100vw" /></figure>}
+    </div>
+    <aside class="where">
+      <h2>{t('whereTitle')}</h2>
+      <address>The House of Waffles<br />{loc.street}<br />{loc.postal} {loc.locality}</address>
+      <p>{t('hours')}</p>
+      <p><a class="btn" href={loc.maps} rel="noopener">{t('navigate')}</a></p>
+    </aside>
+  </section>
+)}
+
+{page === 'menu' && (
+  <section class="page-hero">
+    <Image class="page-hero-img" src={photo('groep-wafels')} alt="" widths={[800, 1600]} sizes="100vw" loading="eager" />
+    <div class="page-hero-text"><h1>{t('menuTitle')}</h1></div>
+  </section>
+)}
+
+{loc?.gallery && (
+  <section class="gallery">
+    {loc.gallery.map((g) => <Image src={photo(g)} alt="" widths={W} sizes="(min-width: 800px) 33vw, 100vw" />)}
+  </section>
+)}
+
+{(page === 'home' || page === 'menu' || isLoc) && (
+  <section class="waffles" data-waffle-scope data-type="brussels">
+    <header class="section-head">
+      {page !== 'menu' && <h2>{page === 'home' ? t('menuTitle') : t('onMenu')}</h2>}
+      {(page === 'home' || page === 'menu') && <p>{t('menuLead')}</p>}
+      <div class="toggle" role="group" aria-label={t('toggleLabel')} data-waffle-toggle>
+        <button type="button" value="brussels" aria-pressed="true">{t('brussels')}</button>
+        <button type="button" value="liege" aria-pressed="false">{t('liege')}</button>
+      </div>
+    </header>
+    {(page === 'menu' ? (['sweet', 'savoury'] as const) : ([null] as const)).map((kind) => (
+      <>
+        {kind && <h2 class="kind">{t(kind)}</h2>}
+        <ul class="waffle-grid">
+          {grid.filter((w) => !kind || w.kind === kind).map((w) => (
+            <li>
+              <figure class:list={[{ dual: !!w.brussels }]}>
+                {w.brussels && <Image class="b" src={photo(w.brussels)} alt={`${w.name}, ${t('brussels')}`} widths={W} sizes="(min-width: 900px) 25vw, 50vw" />}
+                {w.liege && <Image class="l" src={photo(w.liege)} alt={`${w.name}, ${t('liege')}`} widths={W} sizes="(min-width: 900px) 25vw, 50vw" />}
+                {w.single && <Image src={photo(w.single)} alt={w.name} widths={W} sizes="(min-width: 900px) 25vw, 50vw" />}
+              </figure>
+              <h3>{w.nameL ? w.nameL[lang] : w.name}</h3>
+              <p>{w.desc[lang]}</p>
+            </li>
+          ))}
+        </ul>
+      </>
+    ))}
+    {page === 'menu' && (
+      <div class="also">
+        <h2 class="kind">{t('alsoTitle')}</h2>
+        <dl>{MORE_WAFFLES.map((m) => (<><dt>{m.name}</dt><dd>{m.desc[lang]}</dd></>))}</dl>
+      </div>
+    )}
+    {page !== 'menu' && <p class="more"><a class="btn dark" href={url(lang, 'menu')}>{t('allWaffles')}</a></p>}
+  </section>
+)}
+
+{(page === 'home' || page === 'menu') && (
+  <section class="two-kinds">
+    <h2>{t('twoTitle')}</h2>
+    <div class="kinds">
+      <article>
+        <Image src={photo('brussels-met-suiker')} alt="" widths={W} sizes="(min-width: 800px) 45vw, 100vw" />
+        <h3 class="script">{t('brussels')}</h3>
+        <p>{t('brusselsText')}</p>
+      </article>
+      <article>
+        <Image src={photo('chuck-berry-luiks')} alt="" widths={W} sizes="(min-width: 800px) 45vw, 100vw" />
+        <h3 class="script">{t('liege')}</h3>
+        <p>{t('liegeText')}</p>
+      </article>
+    </div>
+  </section>
+)}
+
+{page === 'home' && (
+  <section class="history-teaser">
+    <Image src={photo('dsc00816')} alt="" widths={W} sizes="(min-width: 800px) 35vw, 100vw" />
+    <div>
+      <h2>{t('historyTitle')}</h2>
+      <p>{t('historyTeaser')}</p>
+      <p><a class="btn" href={url(lang, 'history')}>{t('historyCta')}</a></p>
+    </div>
+  </section>
+  <section class="reviews">
+    <h2>{t('reviewsTitle')}</h2>
+    <ul>
+      {REVIEWS.map((r) => (<li><blockquote lang="en"><p>“{r.quote}”</p></blockquote><cite>{r.source}</cite></li>))}
+    </ul>
+  </section>
+)}
+
+{page === 'history' && (
+  <section class="plain-head">
+    <h1>{t('h_h1')}</h1>
+    <p>{t('historyTitle')}</p>
+  </section>
+  <section class="story">
+    <div class="prose">
+      <p class="lead">{t('h_p1')}</p>
+      <p>{t('h_p2')}</p>
+      <figure><Image src={photo('oma2')} alt={t('h_alt1')} widths={W} sizes="(min-width: 800px) 40rem, 100vw" /><figcaption>{t('h_alt1')}</figcaption></figure>
+      <p>{t('h_p3')}</p>
+      <p>{t('h_p4')}</p>
+      <p>{t('h_p5')}</p>
+    </div>
+    <ol class="timeline">
+      <li><time>1929</time><span>{t('h_t1')}</span></li>
+      <li><time>2018</time><span>{t('h_t2')}</span></li>
+      <li><time>2021</time><span>{t('h_t3')}</span></li>
+      <li><time>2023</time><span>{t('h_t4')}</span></li>
+    </ol>
+  </section>
+)}
+
+{page === 'jobs' && (
+  <section class="page-hero">
+    <Image class="page-hero-img" src={photo('stef-en-co')} alt="" widths={[800, 1600]} sizes="100vw" loading="eager" />
+    <div class="page-hero-text"><h1>{t('j_h1')}</h1></div>
+  </section>
+  <section class="prose-split">
+    <div class="prose">
+      <p class="lead">{t('j_intro')}</p>
+      <dl class="roles">
+        {[1, 2, 3, 4].map((i) => (<><dt>{t(`j_r${i}`)}</dt><dd>{t(`j_r${i}t`)}</dd></>))}
+      </dl>
+    </div>
+    <aside class="where">
+      <h2>{t('j_apply')}</h2>
+      <p>{t('j_how')}</p>
+      <p><a class="btn" href={mailApply}>{t('j_apply')}</a></p>
+      <p><a class="textlink" href={`mailto:${EMAIL}`}>{EMAIL}</a></p>
+    </aside>
+  </section>
+)}
+
+{page === 'contact' && (
+  <section class="plain-head">
+    <h1>{t('c_h1')}</h1>
+    <p>{t('c_intro')}</p>
+  </section>
+  <section class="contact">
+    <ul class="contact-houses">
+      {houses.map((k) => (
+        <li>
+          <h2><a href={url(lang, k)}>{LOCATIONS[k].city[lang]}</a></h2>
+          <address>{LOCATIONS[k].street}<br />{LOCATIONS[k].postal} {LOCATIONS[k].locality}</address>
+          <p>{t('hoursShort')}</p>
+          <p><a class="textlink" href={LOCATIONS[k].maps} rel="noopener">{t('navigate')}</a></p>
+        </li>
+      ))}
+    </ul>
+    <p class="mailrow">{t('c_mail')}: <a href={`mailto:${EMAIL}`}>{EMAIL}</a></p>
+  </section>
+)}
+
+</Base>

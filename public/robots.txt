@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://www.thehouseofwaffles.com/sitemap-index.xml

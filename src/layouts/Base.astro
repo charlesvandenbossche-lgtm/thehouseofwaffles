@@ -1,0 +1,110 @@
+---
+import '@fontsource-variable/bricolage-grotesque';
+import '@fontsource/mrs-saint-delafield';
+import '@fontsource-variable/hanken-grotesk';
+import '../styles.css';
+import { SITE, EMAIL, LANGS, LOCATIONS, SOCIAL, T, url, type Lang, type PageKey } from '../data/site';
+
+interface Props { lang: Lang; page: PageKey; title: string; description: string; jsonld?: object; overlayHeader?: boolean }
+const { lang, page, title, description, jsonld, overlayHeader = false } = Astro.props;
+const t = (k: string) => T[k][lang];
+const canonical = SITE + url(lang, page);
+const fullTitle = page === 'home' ? title : `${title} | The House of Waffles`;
+const nav: [PageKey, string][] = [
+  ['bruges', LOCATIONS.bruges.city[lang]], ['antwerp', LOCATIONS.antwerp.city[lang]], ['ghent', LOCATIONS.ghent.city[lang]],
+  ['menu', t('navMenu')], ['history', t('navHistory')], ['jobs', t('navJobs')], ['contact', t('navContact')],
+];
+---
+<!doctype html>
+<html lang={lang}>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{fullTitle}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+  {LANGS.map((l) => <link rel="alternate" hreflang={l} href={SITE + url(l, page)} />)}
+  <link rel="alternate" hreflang="x-default" href={SITE + url('en', page)} />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="The House of Waffles" />
+  <meta property="og:title" content={fullTitle} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:image" content={SITE + '/media/hero-poster.jpg'} />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" content="#161103" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  {jsonld && <script type="application/ld+json" set:html={JSON.stringify(jsonld)} />}
+</head>
+<body class:list={[{ 'has-overlay': overlayHeader }]}>
+  <a class="skip" href="#main">{t('skip')}</a>
+  <header class="site-header">
+    <a class="wordmark" href={url(lang, 'home')} aria-label="The House of Waffles">
+      <img src="/brand/logo-secondary-light.png" alt="The House of Waffles" width="900" height="172" />
+    </a>
+    <button class="nav-toggle" aria-expanded="false" aria-controls="nav">{t('openMenu')}</button>
+    <nav id="nav" aria-label="Main">
+      <ul>
+        {nav.map(([p, label]) => <li><a href={url(lang, p)} aria-current={p === page ? 'page' : undefined}>{label}</a></li>)}
+      </ul>
+      <ul class="langs" aria-label="Language">
+        {LANGS.map((l) => <li><a href={url(l, page)} hreflang={l} lang={l} aria-current={l === lang ? 'true' : undefined}>{l.toUpperCase()}</a></li>)}
+      </ul>
+    </nav>
+  </header>
+  <main id="main"><slot /></main>
+  <section class="closing">
+    <img class="closing-icon" src="/brand/waffle-black.svg" alt="" width="142" height="142" aria-hidden="true" />
+    <p class="closing-line">{t('closing')}</p>
+    {page !== 'contact' && <ul class="closing-houses">
+      {(['bruges', 'antwerp', 'ghent'] as const).map((k) => (
+        <li>
+          <a href={url(lang, k)}><strong>{LOCATIONS[k].city[lang]}</strong></a>
+          <span>{LOCATIONS[k].street}</span>
+          <a class="textlink" href={LOCATIONS[k].maps} rel="noopener">{t('navigate')}</a>
+        </li>
+      ))}
+    </ul>}
+    <p class="closing-hours">{t('hours')}</p>
+  </section>
+  <footer class="site-footer">
+    <div>
+      <img class="footer-logo" src="/brand/logo-primary-light.png" alt="The House of Waffles, since 1929" width="900" height="519" loading="lazy" />
+      <p>{t('tagline')}</p>
+    </div>
+    <div>
+      <h2>{t('footerHouses')}</h2>
+      <ul>{(['bruges', 'antwerp', 'ghent'] as const).map((k) => <li><a href={url(lang, k)}>{LOCATIONS[k].city[lang]}</a>, {LOCATIONS[k].street}</li>)}</ul>
+    </div>
+    <div>
+      <h2>{t('footerMore')}</h2>
+      <ul>
+        <li><a href={url(lang, 'menu')}>{t('navMenu')}</a></li>
+        <li><a href={url(lang, 'history')}>{t('navHistory')}</a></li>
+        <li><a href={url(lang, 'jobs')}>{t('navJobs')}</a></li>
+        <li><a href={SOCIAL.instagram} rel="noopener">Instagram</a></li>
+        <li><a href={SOCIAL.facebook} rel="noopener">Facebook</a></li>
+      </ul>
+    </div>
+    <p class="legal">© {new Date().getFullYear()} The House of Waffles. {t('rights')} <a href={`mailto:${EMAIL}`}>{EMAIL}</a></p>
+  </footer>
+  <script is:inline>
+    (function () {
+      var b = document.querySelector('.nav-toggle'), n = document.getElementById('nav');
+      if (b && n) b.addEventListener('click', function () {
+        var open = b.getAttribute('aria-expanded') === 'true';
+        b.setAttribute('aria-expanded', String(!open)); n.classList.toggle('open', !open);
+      });
+      document.querySelectorAll('[data-waffle-toggle]').forEach(function (group) {
+        var scope = group.closest('[data-waffle-scope]');
+        group.querySelectorAll('button').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            scope.setAttribute('data-type', btn.value);
+            group.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === btn)); });
+          });
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

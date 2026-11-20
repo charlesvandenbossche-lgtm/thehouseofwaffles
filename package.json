@@ -1,0 +1,23 @@
+{
+  "name": "thehouseofwaffles",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "astro build",
+    "dev": "astro dev",
+    "preview": "astro preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.6",
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource-variable/hanken-grotesk": "^5.3.0",
+    "@fontsource/mrs-saint-delafield": "^5.3.0",
+    "astro": "^7.4.13"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
