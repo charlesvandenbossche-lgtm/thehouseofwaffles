@@ -23,3 +23,5 @@ npm run build    # bouwt de site in dist/
 ## Hosting
 
 Cloudflare Pages: build command `npm run build`, output directory `dist`.
+
+Wijzigingen op de `main`-branch gaan automatisch live via Cloudflare Pages (project `houseofwaffles`).
